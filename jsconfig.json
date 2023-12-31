@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "Api": ["src/logic/api"],
+      "Api/*": ["src/logic/api/*"],
+      "Constants": ["src/logic/constants"],
+      "Constants/*": ["src/logic/constants/*"],
+      "Helpers": ["src/logic/helpers"],
+      "Helpers/*": ["src/logic/helpers/*"],
+      "Hooks": ["src/logic/hooks"],
+      "Hooks/*": ["src/logic/hooks/*"],
+      "Locales": ["src/logic/locales"],
+      "Locales/*": ["src/logic/locales/*"],
+      "Reducers": ["src/logic/reducers"],
+      "Reducers/*": ["src/logic/reducers/*"],
+      "Redux": ["src/logic/redux"],
+      "Redux/*": ["src/logic/redux/*"],
+      "Repositories": ["src/logic/repositories"],
+      "Repositories/*": ["src/logic/repositories/*"],
+      "Routes": ["src/logic/routes"],
+      "Routes/*": ["src/logic/routes/*"],
+      "Sagas": ["src/logic/sagas"],
+      "Sagas/*": ["src/logic/sagas/*"],
+      "Selectors": ["src/logic/selectors"],
+      "Selectors/*": ["src/logic/selectors/*"],
+
+      "Assets": ["src/view/assets"],
+      "Assets/*": ["src/view/assets/*"],
+      "Components": ["src/view/components"],
+      "Components/*": ["src/view/components/*"],
+      "Navigator": ["src/view/navigator"],
+      "Navigator/*": ["src/view/navigator/*"],
+      "Pages": ["src/view/pages"],
+      "Pages/*": ["src/view/pages/*"]
+    }
+  }
+}
