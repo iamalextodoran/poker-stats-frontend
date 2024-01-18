@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { classNames, mock } from 'Helpers';
+import useClickOutside from 'Hooks/useClickOutside';
+
+import CalendarDate from './CalendarDate';
 
 const parseDate = ({ maxDate = '', minDate = '', setInputDate = mock, setPreview = mock }, input = '') => {
   let day, month, year;
@@ -9,7 +12,7 @@ const parseDate = ({ maxDate = '', minDate = '', setInputDate = mock, setPreview
   for (const separator of separators) {
     const parts = input.split(separator);
 
-    // TODO: Maybe check if user inputs date without any separator like: 01012024
+    // TODO: Maybe... check if user inputs date without any separator like: 01012024
     if (parts.length === 3) {
       let potentialDay, potentialMonth, potentialYear;
 
@@ -85,10 +88,10 @@ const parseDate = ({ maxDate = '', minDate = '', setInputDate = mock, setPreview
 };
 
 const START_OF_THE_WEEK = 1; //MONDAY = 1, SUNDAY = 0
-let WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+let WEEK_DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 if (START_OF_THE_WEEK === 0) {
-  WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  WEEK_DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 }
 
 const daysInMonth = (year = 0, month = 0) => new Date(year, month + 1, 0).getDate();
@@ -108,13 +111,7 @@ const onDateClick = ({
   setInputDate(newDate.toLocaleDateString('en-UK'));
 };
 
-// max and min dates work as 2023-01-01 and as new Date() object
-// TODO: make value work the same^
-
-const DatePicker = ({ maxDate = '', minDate = '', onChange = mock, value = undefined }) => {
-  const [inputDate, setInputDate] = useState(() => (value ? value.toLocaleDateString('en-UK') : undefined));
-  const [preview, setPreview] = useState(() => value ?? new Date());
-
+const getRowsOfWeek = (preview = '') => {
   let firstDayOfMonth = new Date(preview.getFullYear(), preview.getMonth(), 1).getDay() - START_OF_THE_WEEK;
 
   // refactor this shit
@@ -143,100 +140,157 @@ const DatePicker = ({ maxDate = '', minDate = '', onChange = mock, value = undef
     days.push(week);
   }
 
+  return days;
+};
+
+const renderDayName = (dayName = '') => (
+  <th key={dayName} className='w-10 h-10 rounded-md bg-emerald-100 text-gray-700'>
+    {dayName}
+  </th>
+);
+
+const renderDay = (
+  { maxDate = '', minDate = '', onChange = mock, preview = '', setInputDate = mock, value = '' },
+  day = 0,
+  dayIndex = 0,
+) => {
+  const highlightDate =
+    value?.getFullYear() === preview?.getFullYear() &&
+    value?.getMonth() === preview?.getMonth() &&
+    day === value?.getDate();
+
+  const today = new Date();
+  const todaysDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const previewDate = new Date(preview.getFullYear(), preview.getMonth(), day);
+  const isAfter = maxDate && previewDate > new Date(maxDate);
+  const isBefore = minDate && previewDate < new Date(minDate);
+
+  const isToday = todaysDate.toLocaleDateString('en-UK') === previewDate.toLocaleDateString('en-UK');
+
+  const disabled = isAfter || isBefore;
+
+  // TODO: disable next and prev months accordingly
+
   return (
-    <div className='relative w-fit'>
-      {/* {'UTC probably: ' + JSON.stringify(value)} */}
+    <td
+      key={dayIndex}
+      onClick={onDateClick.bind(null, {
+        day,
+        isAfter,
+        isBefore,
+        preview,
+        setInputDate,
+        onChange,
+      })}
+      className={classNames(
+        'w-10 h-10 shrink-0 rounded-md',
+        (() => {
+          let classNames = [];
 
-      <input
-        onBlur={e => onChange(parseDate({ maxDate, minDate, setInputDate, setPreview }, e.target.value))}
-        onChange={e => setInputDate(e.target.value)}
-        placeholder='Enter date (dd-mm-yyyy, dd.mm.yy, etc.)'
-        type='text'
-        value={inputDate}
-      />
+          if (day !== null) {
+            if (disabled) {
+              classNames.push('bg-emerald-50 text-gray-500');
+            } else {
+              classNames.push('cursor-pointer');
 
-      <div className='absolute top-full left-0'>
-        <div className='flex items-center justify-between'>
-          <button
-            className='px-2 py-1 rounded bg-blue-500 text-white mr-2'
-            onClick={() => setPreview(date => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>
-            Prev
-          </button>
+              if (highlightDate) {
+                classNames.push('bg-emerald-400 hover:bg-emerald-500 text-white');
+              } else {
+                classNames.push('bg-gray-50 hover:bg-emerald-300 hover:text-white text-gray-900');
+              }
+            }
+          } else {
+            classNames.push('bg-yellow-50');
+          }
 
-          <span className='mx-4 text-lg font-bold'>
-            {preview.toLocaleDateString('en-UK', { year: 'numeric', month: 'long' })}
-          </span>
+          return classNames.join(' ');
+        })(),
+      )}>
+      <div className='flex items-center justify-center select-none relative'>
+        {day}
 
-          <button
-            className='px-2 py-1 rounded bg-blue-500 text-white ml-2'
-            onClick={() => setPreview(date => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>
-            Next
-          </button>
-        </div>
-
-        <table className='rounded-md border border-gray-400'>
-          <thead>
-            <tr className='bg-gray-200'>
-              {WEEK_DAYS.map((day = 0) => (
-                <th key={day} className='border border-gray-400 w-10 h-10 rounded-md'>
-                  {day}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {days.map((week = [], weekIndex = 0) => (
-              <tr key={weekIndex}>
-                {week.map((day = 0, dayIndex = 0) => {
-                  const highlightDate =
-                    value?.getFullYear() === preview?.getFullYear() &&
-                    value?.getMonth() === preview?.getMonth() &&
-                    day === value?.getDate();
-
-                  const today = new Date();
-                  const todaysDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                  const previewDate = new Date(preview.getFullYear(), preview.getMonth(), day);
-                  const isAfter = maxDate && previewDate > new Date(maxDate);
-                  const isBefore = minDate && previewDate < new Date(minDate);
-
-                  const isToday =
-                    todaysDate.toLocaleDateString('en-UK') === previewDate.toLocaleDateString('en-UK');
-
-                  // TODO: disable next and prev months accordingly
-
-                  return (
-                    <td
-                      key={dayIndex}
-                      onClick={onDateClick.bind(null, {
-                        day,
-                        isAfter,
-                        isBefore,
-                        preview,
-                        setInputDate,
-                        onChange,
-                      })}
-                      className={classNames(
-                        highlightDate && 'bg-blue-200',
-                        !day && 'bg-yellow-100',
-                        'border border-gray-400 w-10 h-10',
-                        (isAfter || isBefore) && 'bg-red-50',
-                      )}>
-                      <div className='flex items-center justify-center select-none relative'>
-                        {day}
-
-                        {isToday && (
-                          <div className='h-1 w-1 shrink-0 bg-red-500 rounded-full absolute top-full'></div>
-                        )}
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {isToday && <div className='h-1 w-1 shrink-0 bg-green-500 rounded-full absolute top-full'></div>}
       </div>
+    </td>
+  );
+};
+
+// max and min dates work as 2023-01-01 and as new Date() object
+// TODO: make value work the same^
+
+const DatePicker = ({ maxDate = '', minDate = '', onChange = mock, value = undefined }) => {
+  const [inputDate, setInputDate] = useState(() => (value ? value.toLocaleDateString('en-UK') : undefined));
+  const [preview, setPreview] = useState(() => value ?? new Date());
+
+  const calendarRef = useRef(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  const rowsOfWeeks = useMemo(() => getRowsOfWeek(preview), [preview]);
+
+  useClickOutside(calendarRef, () => setShowCalendar(prev => !prev));
+
+  return (
+    <div className='relative'>
+      <div className='relative'>
+        <button
+          disabled={false}
+          onClick={() => setShowCalendar(prev => !prev)}
+          className='absolute top-3 left-0'>
+          <CalendarDate className='ml-3 w-4 h-4 text-gray-700 hover:scale-125' />
+        </button>
+
+        <input
+          className='pl-8 pr-4 py-2.5 text-sm text-gray-700 placeholder:text-gray-600 placeholder:font-normal font-medium outline-none border rounded-md'
+          disabled={false}
+          onBlur={e => onChange(parseDate({ maxDate, minDate, setInputDate, setPreview }, e.target.value))}
+          onChange={e => setInputDate(e.target.value)}
+          placeholder='dd/mm/yyyy'
+          type='text'
+          value={inputDate}
+        />
+      </div>
+
+      {showCalendar && (
+        <div
+          ref={calendarRef}
+          className='p-4 space-y-2 absolute top-full left-0 bg-white border shadow rounded-lg'>
+          <div className='flex items-center justify-between'>
+            <button
+              disabled={false} // TODO: check for disabled dates
+              className='w-8 h-8 rounded bg-emerald-500 hover:bg-emerald-600 text-white'
+              onClick={() => setPreview(date => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>
+              {'<'}
+            </button>
+
+            <span className='mx-4 text-lg text-gray-600 font-bold'>
+              {preview.toLocaleDateString('en-UK', { year: 'numeric', month: 'long' })}
+            </span>
+
+            <button
+              disabled={false} // TODO: check for disabled dates
+              className='w-8 h-8 rounded bg-emerald-500 hover:bg-emerald-600 text-white'
+              onClick={() => setPreview(date => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>
+              {'>'}
+            </button>
+          </div>
+
+          <table>
+            <thead>
+              <tr>{WEEK_DAY_NAMES.map(renderDayName)}</tr>
+            </thead>
+
+            <tbody>
+              {rowsOfWeeks.map((weekRow = [], weekRowIndex = 0) => (
+                <tr key={weekRowIndex}>
+                  {weekRow.map(
+                    renderDay.bind(null, { maxDate, minDate, onChange, preview, setInputDate, value }),
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
