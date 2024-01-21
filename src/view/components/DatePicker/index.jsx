@@ -98,13 +98,14 @@ const daysInMonth = (year = 0, month = 0) => new Date(year, month + 1, 0).getDat
 
 const onDateClick = ({
   day = 0,
+  highlightDate = '',
   isAfter = false,
   isBefore = false,
+  onChange = mock,
   preview = '',
   setInputDate = mock,
-  onChange = mock,
 }) => {
-  if (!day || isAfter || isBefore) return;
+  if (!day || isAfter || isBefore || highlightDate) return;
 
   const newDate = new Date(preview?.getFullYear(), preview?.getMonth(), day);
   onChange(newDate);
@@ -167,8 +168,6 @@ const renderDay = (
 
   const isToday = todaysDate.toLocaleDateString('en-UK') === previewDate.toLocaleDateString('en-UK');
 
-  const disabled = isAfter || isBefore;
-
   // TODO: disable next and prev months accordingly
 
   return (
@@ -176,11 +175,12 @@ const renderDay = (
       key={dayIndex}
       onClick={onDateClick.bind(null, {
         day,
+        highlightDate,
         isAfter,
         isBefore,
+        onChange,
         preview,
         setInputDate,
-        onChange,
       })}
       className={classNames(
         'w-10 h-10 shrink-0 rounded-md',
@@ -188,7 +188,7 @@ const renderDay = (
           let classNames = [];
 
           if (day !== null) {
-            if (disabled) {
+            if (isAfter || isBefore) {
               classNames.push('bg-emerald-50 text-gray-500');
             } else {
               classNames.push('cursor-pointer');
@@ -242,7 +242,19 @@ const DatePicker = ({ maxDate = '', minDate = '', onChange = mock, value = undef
         <input
           className='pl-8 pr-4 py-2.5 text-sm text-gray-700 placeholder:text-gray-600 placeholder:font-normal font-medium outline-none border rounded-md'
           disabled={false}
-          onBlur={e => onChange(parseDate({ maxDate, minDate, setInputDate, setPreview }, e.target.value))}
+          onBlur={e => {
+            const newDate = parseDate({ maxDate, minDate, setInputDate, setPreview }, e.target.value);
+
+            if (newDate === null) {
+              return onChange(newDate);
+            }
+
+            if (newDate.getTime() === value?.getTime()) {
+              return;
+            }
+
+            return onChange(newDate);
+          }}
           onChange={e => setInputDate(e.target.value)}
           placeholder='dd/mm/yyyy'
           type='text'
